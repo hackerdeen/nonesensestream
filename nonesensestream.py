@@ -14,10 +14,15 @@ from escpos import printer
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print("usage:\n\tnonesensestream.py hashtag\n\tsans #")
         sys.exit(1)
-    hashtag = sys.argv[1]
+
+    hashtags = {}
+    for tag in sys.argv[1:]:
+        hashtags[tag] = 0
+
+    print(hashtags)
 
     try: 
         with open('twitter-auth.json') as data_file:    
@@ -35,43 +40,49 @@ if __name__ == "__main__":
         oauth_token_secret=auth["access_token_secret"])
 
     twitter.verify_credentials()
-    query = "{}".format(hashtag)
 
-    print("Following hash tag #{}".format(query))
+    print("Following hash tag", end="")
+    if len(hashtags) > 1:
+        print("s:")
+    else
+        print(":")
 
-    # Get the most recent tweet with the tag on start up, print nothing
-    search = twitter.search(q=query, count=100)
-    tweets = search['statuses']
-    since = tweets[0]['id_str']
+    # Get the most recent tweet with each tag on start up, print nothing
+    for tag, since in hashtags.items():
+        print("\t#{}".format(tag))
+        search = twitter.search(q=tag, count=1)
+        tweets = search['statuses']
+        hashtags[tag] = tweets[0]['id_str']
 
     while True:
         time.sleep(15)
+        for tag, since in hashtags.items():
+            search = twitter.search(q=tag, count=100, since_id=since)
+            tweets = search['statuses']
 
-        search = twitter.search(q=query, count=100, since_id=since)
-        tweets = search['statuses']
+            if len(tweets) == 0:
+                print('.', end='', flush=True)
+                continue
+            else:
+                print("")
 
-        if len(tweets) == 0:
-            print('.', end='', flush=True)
-            continue
-        else:
-            print("")
+            hashtags[tag] = tweets[0]['id_str']
 
-        since = tweets[0]['id_str']
-        for tweet in tweets:
-            print("\t{} {}".format(tweet['user']['screen_name'], tweet['user']['name']))
-            print("\t{}".format(tweet['text']))
+            for tweet in tweets:
+                print("\t{} {}".format(tweet['user']['screen_name'], tweet['user']['name']))
+                print("\t{}".format(tweet['text']))
 
-            plt.text("\t@{}  {}\n".format(tweet['user']['screen_name'], tweet['user']['name']))
-            plt.text("\t{}".format(tweet['text']))
+                plt.text("\t@{}  {}\n".format(tweet['user']['screen_name'], tweet['user']['name']))
+                plt.text("\t{}".format(tweet['text']))
 
-            if 'media' in tweet['entities']:
-                media = tweet['entities']['media'][0]
-                imageurl = media['media_url_https']
+                if 'media' in tweet['entities']:
+                    media = tweet['entities']['media'][0]
+                    imageurl = media['media_url_https']
 
-                if imageurl.endswith(".jpg"):
-                    response = requests.get(imageurl)
-                    img = Image.open(BytesIO(response.content))
+                    if imageurl.endswith(".jpg"):
+                        response = requests.get(imageurl)
+                        img = Image.open(BytesIO(response.content))
 
-                    print("\t{}".format(img))
-                    ##plt.image(img) #need to figure out how to get the printer to do iamges
-            plt.cut()
+                        print("\t{}".format(img))
+                        ##plt.image(img) #need to figure out how to get the printer to do iamges
+                plt.cut()
